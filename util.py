@@ -25,12 +25,19 @@ def get_train_data(train=True):
             y[i] = X[i][0] * X[i][1] + X[i][2]
     return X, y
 
-def func(x, w):
+def f(x, w):
     f = (w[0]*tanh(w[1]*x[0] + w[2]*x[1] + w[3]*x[2] + w[4]) 
         + w[5]*tanh(w[6]*x[0] + w[7]*x[1] + w[8]*x[2] + w[9])
         + w[10]*tanh(w[11]*x[0] + w[12]*x[1] + w[13]*x[2] + w[14])
         + w[15])
     return f
+
+def func(X, w):
+    return np.array([f(x, w) for x in X])
+
+def sse(X, y, w):
+    return np.sum(np.square(func(X, w) - y))
+
 
 def grad(x, w):
     '''
@@ -77,11 +84,7 @@ def jacobian(X, w):
     matrix
        500x16 matrix of gradients.
     '''
-    j = []
-    for x in X:
-        g = grad(x, w)
-        j.append(g)
-    return np.array(j)
+    return np.array([grad(x, w) for x in X])
 
 def LM_matrix(j, constant):
     '''
@@ -144,3 +147,10 @@ def RMSE(y, t):
        Value after calculating RMSE
     '''
     return np.sqrt(np.square((y - t)).mean())
+
+def LM(X, y, w):
+    iterations = 1000
+    trust = 1e-3
+    trust_increase = 2
+    trust_decrease = 0.8
+

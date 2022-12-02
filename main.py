@@ -1,8 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import util
-from network import jacobian, LM_matrix
-import network
+from util import *
 
 def main():
     X_train, y_train = util.get_train_data()
@@ -11,6 +10,9 @@ def main():
     weights = np.random.rand(16, 1)
     j = jacobian(X_train, weights)
     Dh = LM_matrix(j, constant)
-    print(Dh.shape)
+    check = func(X_train, weights)
+    temp = sse(X_train, y_train, weights)
+    print(temp)
+
 if __name__ == "__main__":
     main()
