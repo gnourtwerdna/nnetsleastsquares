@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 def get_train_data(train=True):
     '''
@@ -25,27 +26,7 @@ def get_train_data(train=True):
             y[i] = X[i][0] * X[i][1] + X[i][2]
     return X, y
 
-def f(x, w):
-    '''
-    Computes f(x).
-
-    Parameters
-    ----------
-    x: 3x1 matrix
-    w: 16x1 matrix
-
-    Returns
-    -------
-    float
-        Value after calculating f(x)
-    '''
-    f = (w[0]*tanh(w[1]*x[0] + w[2]*x[1] + w[3]*x[2] + w[4]) 
-        + w[5]*tanh(w[6]*x[0] + w[7]*x[1] + w[8]*x[2] + w[9])
-        + w[10]*tanh(w[11]*x[0] + w[12]*x[1] + w[13]*x[2] + w[14])
-        + w[15])
-    return f
-
-def func(X, w):
+def func(X, w, activation_function):
     '''
     Applies f(x) on the dataset.
 
@@ -59,11 +40,26 @@ def func(X, w):
     np.array
         500x1
     '''
-    return np.array([f(x, w) for x in X])
+    funcs = []
+    if activation_function == 'tanh':
+        for x in X:
+            f = (w[0]*tanh(w[1]*x[0] + w[2]*x[1] + w[3]*x[2] + w[4]) 
+                + w[5]*tanh(w[6]*x[0] + w[7]*x[1] + w[8]*x[2] + w[9])
+                + w[10]*tanh(w[11]*x[0] + w[12]*x[1] + w[13]*x[2] + w[14])
+                + w[15])
+            funcs.append(f)
+    if activation_function == 'sigmoid':
+        for x in X:
+            f = (w[0]*sigmoid(w[1]*x[0] + w[2]*x[1] + w[3]*x[2] + w[4]) 
+                + w[5]*sigmoid(w[6]*x[0] + w[7]*x[1] + w[8]*x[2] + w[9])
+                + w[10]*sigmoid(w[11]*x[0] + w[12]*x[1] + w[13]*x[2] + w[14])
+                + w[15])
+            funcs.append(f)
+    return np.array(funcs)
 
-def sse(X, y, w):
+def calculate_loss(X, y, w, lambda_, activation_function):
     '''
-    Calculates the sum of squared errors. Σ(f(x)-y)^2
+    Calculates l(w)=Σ(r)^2 + lambda||w||_2^2
 
     Parameters
     ----------
@@ -75,10 +71,13 @@ def sse(X, y, w):
     -------
     float
     '''
-    return np.square(func(X, w) - y)
-
-
-def grad(x, w):
+    temp = func(X, w, activation_function) - y
+    temp2 = np.sqrt(lambda_) * w
+    h = np.concatenate((temp, temp2))
+    return (h**2).sum()
+    
+        
+def grad(x, w, activation_function):
     '''
     Computes the gradient of f(x).
 
@@ -92,25 +91,43 @@ def grad(x, w):
     matrix
        16x1 matrix of partial derivatives
     '''
-    dw1 = tanh(w[1]*x[0] + w[2]*x[1] + w[3]*x[2] + w[4])
-    dw2 = x[0]*w[0]*deriv_tanh(w[1]*x[0] + w[2]*x[1] + w[3]*x[2] + w[4])
-    dw3 = x[1]*w[0]*deriv_tanh(w[1]*x[0] + w[2]*x[1] + w[3]*x[2] + w[4])
-    dw4 = x[2]*w[0]*deriv_tanh(w[1]*x[0] + w[2]*x[1] + w[3]*x[2] + w[4])
-    dw5 = w[0]*deriv_tanh(w[1]*x[0] + w[2]*x[1] + w[3]*x[2] + w[4])
-    dw6 = tanh(w[6]*x[0] + w[7]*x[1] + w[8]*x[2] + w[9])
-    dw7 = x[0]*w[5]*deriv_tanh(w[6]*x[0] + w[7]*x[1] + w[8]*x[2] + w[9])
-    dw8 = x[1]*w[5]*deriv_tanh(w[6]*x[0] + w[7]*x[1] + w[8]*x[2] + w[9])
-    dw9 = x[2]*w[5]*deriv_tanh(w[6]*x[0] + w[7]*x[1] + w[8]*x[2] + w[9])
-    dw10 = w[5]*deriv_tanh(w[6]*x[0] + w[7]*x[1] + w[8]*x[2] + w[9])
-    dw11 = tanh(w[11]*x[0] + w[12]*x[1] + w[13]*x[2] + w[14])
-    dw12 = x[0]*w[10]*deriv_tanh(w[11]*x[0] + w[12]*x[1] + w[13]*x[2] + w[14])
-    dw13 = x[1]*w[10]*deriv_tanh(w[11]*x[0] + w[12]*x[1] + w[13]*x[2] + w[14])
-    dw14 = x[2]*w[10]*deriv_tanh(w[11]*x[0] + w[12]*x[1] + w[13]*x[2] + w[14])
-    dw15 = w[10]*deriv_tanh(w[11]*x[0] + w[12]*x[1] + w[13]*x[2] + w[14])
-    dw16 = 1
-    return np.array([dw1, dw2, dw3, dw4, dw5, dw6, dw7, dw8, dw9, dw10, dw11, dw12, dw13, dw14, dw15, dw16],dtype=object)
+    if activation_function == 'tanh':
+        dw1 = tanh(w[1]*x[0] + w[2]*x[1] + w[3]*x[2] + w[4])[0]
+        dw2 = (x[0]*w[0]*deriv_tanh(w[1]*x[0] + w[2]*x[1] + w[3]*x[2] + w[4]))[0]
+        dw3 = (x[1]*w[0]*deriv_tanh(w[1]*x[0] + w[2]*x[1] + w[3]*x[2] + w[4]))[0]
+        dw4 = (x[2]*w[0]*deriv_tanh(w[1]*x[0] + w[2]*x[1] + w[3]*x[2] + w[4]))[0]
+        dw5 = (w[0]*deriv_tanh(w[1]*x[0] + w[2]*x[1] + w[3]*x[2] + w[4]))[0]
+        dw6 = tanh(w[6]*x[0] + w[7]*x[1] + w[8]*x[2] + w[9])[0]
+        dw7 = (x[0]*w[5]*deriv_tanh(w[6]*x[0] + w[7]*x[1] + w[8]*x[2] + w[9]))[0]
+        dw8 = (x[1]*w[5]*deriv_tanh(w[6]*x[0] + w[7]*x[1] + w[8]*x[2] + w[9]))[0]
+        dw9 = (x[2]*w[5]*deriv_tanh(w[6]*x[0] + w[7]*x[1] + w[8]*x[2] + w[9]))[0]
+        dw10 = (w[5]*deriv_tanh(w[6]*x[0] + w[7]*x[1] + w[8]*x[2] + w[9]))[0]
+        dw11 = tanh(w[11]*x[0] + w[12]*x[1] + w[13]*x[2] + w[14])[0]
+        dw12 = (x[0]*w[10]*deriv_tanh(w[11]*x[0] + w[12]*x[1] + w[13]*x[2] + w[14]))[0]
+        dw13 = (x[1]*w[10]*deriv_tanh(w[11]*x[0] + w[12]*x[1] + w[13]*x[2] + w[14]))[0]
+        dw14 = (x[2]*w[10]*deriv_tanh(w[11]*x[0] + w[12]*x[1] + w[13]*x[2] + w[14]))[0]
+        dw15 = (w[10]*deriv_tanh(w[11]*x[0] + w[12]*x[1] + w[13]*x[2] + w[14]))[0]
+        dw16 = 1
+    if activation_function == 'sigmoid':
+        dw1 = sigmoid(w[1]*x[0] + w[2]*x[1] + w[3]*x[2] + w[4])[0]
+        dw2 = (x[0]*w[0]*deriv_sigmoid(w[1]*x[0] + w[2]*x[1] + w[3]*x[2] + w[4]))[0]
+        dw3 = (x[1]*w[0]*deriv_sigmoid(w[1]*x[0] + w[2]*x[1] + w[3]*x[2] + w[4]))[0]
+        dw4 = (x[2]*w[0]*deriv_sigmoid(w[1]*x[0] + w[2]*x[1] + w[3]*x[2] + w[4]))[0]
+        dw5 = (w[0]*deriv_sigmoid(w[1]*x[0] + w[2]*x[1] + w[3]*x[2] + w[4]))[0]
+        dw6 = sigmoid(w[6]*x[0] + w[7]*x[1] + w[8]*x[2] + w[9])[0]
+        dw7 = (x[0]*w[5]*deriv_sigmoid(w[6]*x[0] + w[7]*x[1] + w[8]*x[2] + w[9]))[0]
+        dw8 = (x[1]*w[5]*deriv_sigmoid(w[6]*x[0] + w[7]*x[1] + w[8]*x[2] + w[9]))[0]
+        dw9 = (x[2]*w[5]*deriv_sigmoid(w[6]*x[0] + w[7]*x[1] + w[8]*x[2] + w[9]))[0]
+        dw10 = (w[5]*deriv_sigmoid(w[6]*x[0] + w[7]*x[1] + w[8]*x[2] + w[9]))[0]
+        dw11 = sigmoid(w[11]*x[0] + w[12]*x[1] + w[13]*x[2] + w[14])[0]
+        dw12 = (x[0]*w[10]*deriv_sigmoid(w[11]*x[0] + w[12]*x[1] + w[13]*x[2] + w[14]))[0]
+        dw13 = (x[1]*w[10]*deriv_sigmoid(w[11]*x[0] + w[12]*x[1] + w[13]*x[2] + w[14]))[0]
+        dw14 = (x[2]*w[10]*deriv_sigmoid(w[11]*x[0] + w[12]*x[1] + w[13]*x[2] + w[14]))[0]
+        dw15 = (w[10]*deriv_sigmoid(w[11]*x[0] + w[12]*x[1] + w[13]*x[2] + w[14]))[0]
+        dw16 = 1
+    return np.array([dw1, dw2, dw3, dw4, dw5, dw6, dw7, dw8, dw9, dw10, dw11, dw12, dw13, dw14, dw15, dw16])
 
-def jacobian(X, w):
+def jacobian(X, w, activation_function):
     '''
     Computes the Jacobian matrix.
 
@@ -126,9 +143,9 @@ def jacobian(X, w):
     '''
     j = []
     for x in X:
-        g = grad(x, w)
+        g = grad(x, w, activation_function)
         j.append(g)
-    return j
+    return np.array(j)
 
 def LM_matrix(j, constant):
     '''
@@ -146,7 +163,7 @@ def LM_matrix(j, constant):
     h = np.sqrt(constant)*np.identity(16)
     return np.concatenate((j, h))
 
-def calculate_b(X, y, w):
+def calculate_b(X, y, w, activation_function):
     '''
     Calculates b.
 
@@ -162,11 +179,41 @@ def calculate_b(X, y, w):
     np.array
        516x1 matrix
     '''
-    r = sse(X, y, w)
-    Dr = jacobian(X, w)
+    r = func(X, w, activation_function) - y
+    Dr = jacobian(X, w, activation_function)
     temp = r - np.dot(Dr, w)
-    #return np.concatenate((temp, np.zeros((16,1))))
-    return Dr
+    return np.concatenate((temp, np.zeros((16,1))))
+
+def sigmoid(x):
+    '''
+    Computes the sigmoid function. f(x) = 1/(1+e^-x)
+
+    Parameters
+    ----------
+    x: The internal value while a pattern goes through the network
+
+    Returns
+    -------
+    float
+       Value after applying sigmoid function
+    '''
+    return 1 / (1 + np.exp(-x))
+
+def deriv_sigmoid(x):
+    '''
+    Computes the derivative of the sigmoid function. f(x) = sigmoid(x)(1 - sigmoid(x))
+
+    Parameters
+    ----------
+    x: The internal value while a pattern goes through the network
+
+    Returns
+    -------
+    float
+       Value after applying sigmoid function
+    '''
+    return sigmoid(x) * (1 - sigmoid(x))
+
 
 def tanh(x):
     '''
@@ -181,7 +228,7 @@ def tanh(x):
     float
        Value after applying tanh function
     '''
-    return (np.exp(x)-np.exp(-x)) / (np.exp(x)+np.exp(-x))
+    return (np.exp(x) - np.exp(-x)) / (np.exp(x) + np.exp(-x))
 
 def deriv_tanh(x):
     '''
@@ -214,36 +261,50 @@ def RMSE(y, t):
     '''
     return np.sqrt(np.square((y - t)).mean())
 
-def LM(X, y, w, lambda_):
-    iterations = 1000
-    trust = 1e-3
+def LM(X, y, w, lambda_, gamma, activation_function):
+    maxiter = 500
+    trust = gamma
     trust_increase = 2
     trust_decrease = 0.8
-    Dr = jacobian(X, w)
-    Dh = LM_matrix(Dr, lambda_)
-    b = calculate_b(X, y, w)
 
+    loss = 0
+    loss_new = 0
+    losses = []
+    weights = []
+    weights.append(w)
+    
+    for i in range(maxiter):
+        Dr = jacobian(X, weights[-1], activation_function)
+        Dh = LM_matrix(Dr, lambda_)
+        b = calculate_b(X, y, weights[-1], activation_function)
+        trust_sqrt = np.sqrt(trust)
+        temp = trust_sqrt * weights[-1]
+        y_ = np.concatenate((b, temp))
+        temp = trust_sqrt * np.identity(16)
+        A_ = np.concatenate((Dh, temp))
+        pinv = np.linalg.pinv(A_)
+        w_new = pinv.dot(y_)
+        weights.append(w_new)
+        loss_new = calculate_loss(X, y, w_new, lambda_, activation_function)
+        losses.append(loss_new)
 
+        if np.linalg.norm(weights[-1] - weights[-2]) < 1e-10:
+            break
 
-    '''
-    trust_sqrt = np.sqrt(trust)
-    temp = trust_sqrt * w
-    y_ = np.concatenate((b, temp)) # 532x1 matrix
+        if loss_new < loss:
+            trust *= trust_decrease
+            w = w_new
 
-    temp = trust_sqrt * np.identity(16)
-    A = np.concatenate((Dh, temp)) # 532x16 matrix
+        else:
+            trust *= trust_increase
+        
+    return losses, weights
 
-    #pinv = np.linalg.pinv(A)
-    '''
-
-
-
-
-    '''
-    for i in range(iterations):
-        # least squares
-        pinv = np.linalg.pinv(A)
-        h = np.dot(pinv, y)
-    '''
-    return b
-
+def loss_plot(losses, gamma):
+    x = range(len(losses))
+    y = losses
+    plt.plot(x, y)
+    plt.xlabel('Iteration')
+    plt.ylabel('Loss')
+    plt.title('Initial Gamma={}'.format(gamma))
+    plt.show()
