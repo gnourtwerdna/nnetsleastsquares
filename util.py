@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def get_train_data(train=True):
+def get_train_data(train=True, data_factor=1):
     '''
     Generates a training/testing dataset of random samples from a uniform distribution in R3.
 
@@ -15,12 +15,12 @@ def get_train_data(train=True):
         A tuple representing the dataset (X, y)
     '''
     if train == True:
-        X = np.random.rand(500, 3)
+        X = np.random.rand(500, 3)*data_factor
         y = np.zeros((500, 1))
         for i in range(len(X)):
             y[i] = X[i][0] * X[i][1] + X[i][2]
     if train == False:
-        X = np.random.rand(100, 3)
+        X = np.random.rand(100, 3)*data_factor
         y = np.zeros([100, 1])
         for i in range(len(X)):
             y[i] = X[i][0] * X[i][1] + X[i][2]
@@ -267,9 +267,21 @@ def LM(X, y, w, lambda_, gamma, activation_function):
     trust_increase = 2
     trust_decrease = 0.8
 
-    loss = 0
     loss_new = 0
     losses = []
+    Dr = jacobian(X, w, activation_function)
+    Dh = LM_matrix(Dr, lambda_)
+    b = calculate_b(X, y, w, activation_function)
+    trust_sqrt = np.sqrt(trust)
+    temp = trust_sqrt * w
+    y_ = np.concatenate((b, temp))
+    temp = trust_sqrt * np.identity(16)
+    A_ = np.concatenate((Dh, temp))
+    pinv = np.linalg.pinv(A_)
+    w = pinv.dot(y_)
+    loss = calculate_loss(X, y, w, lambda_, activation_function)
+    losses.append(loss)
+
     weights = []
     weights.append(w)
     
@@ -291,7 +303,7 @@ def LM(X, y, w, lambda_, gamma, activation_function):
         if np.linalg.norm(weights[-1] - weights[-2]) < 1e-10:
             break
 
-        if loss_new < loss:
+        if losses[-1] < losses[-2]:
             trust *= trust_decrease
             w = w_new
 
@@ -300,11 +312,10 @@ def LM(X, y, w, lambda_, gamma, activation_function):
         
     return losses, weights
 
-def loss_plot(losses, gamma):
+def loss_plot(losses):
     x = range(len(losses))
     y = losses
     plt.plot(x, y)
     plt.xlabel('Iteration')
     plt.ylabel('Loss')
-    plt.title('Initial Gamma={}'.format(gamma))
     plt.show()
